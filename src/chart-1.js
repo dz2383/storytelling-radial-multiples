@@ -1,12 +1,11 @@
 import * as d3 from 'd3'
 
 var margin = { top: 30, left: 30, right: 30, bottom: 30 }
+
 var height = 400 - margin.top - margin.bottom
+
 var width = 780 - margin.left - margin.right
 
-// At the very least you'll need scales, and
-// you'll need to read in the file. And you'll need
-// and svg, too, probably.
 var svg = d3
   .select('#chart-1')
   .append('svg')
@@ -15,58 +14,58 @@ var svg = d3
   .append('g')
   .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')')
 
-var pie = d3.pie().value(function(d) {
-  return d.minutes
-})
-
-var radius = 100
+var colorScale = d3.scaleOrdinal().range(['#7fc97f', '#beaed4', '#fdc086'])
 
 var arc = d3
   .arc()
   .innerRadius(0)
-  .outerRadius(radius)
+  .outerRadius(150)
 
+var labelArc = d3
+  .arc()
+  .innerRadius(160)
+  .outerRadius(160)
 
-var colorScale = d3.scaleOrdinal().range(['#fbb4ae', '#b3cde3', '#ccebc5'])
+var pie = d3.pie().value(function(d) {
+  return d.minutes
+})
 
 d3.csv(require('./data/time-breakdown.csv'))
   .then(ready)
-  .catch(err => console.log('Failed with', err))
+  .catch(err => console.log('Failed on', err))
 
 function ready(datapoints) {
-  // Build a container and move it to the middle
-  // because we can't set the cx/cy on the radial
-  // charts even though they're circular
-  var container = svg.append('g').attr('transform', 'translate(200,200)')
+  var pieContainer = svg
+    .append('g')
+    .attr('transform', 'translate(' + width / 2 + ',' + height / 2 + ')')
 
-  // console.log(pie(datapoints))
-
-  container
+  pieContainer
     .selectAll('path')
     .data(pie(datapoints))
     .enter()
     .append('path')
-    .attr('d', d => arc(d))
-    .attr('fill', d => colorScale(d.data.task))
+    .attr('d', arc)
+    .attr('fill', function(d) {
+      return colorScale(d.data.task)
+    })
 
-  container
-    .selectAll('.angle-text')
-    .data(angleScale.domain())
+  pieContainer
+    .selectAll('text')
+    .data(pie(datapoints))
     .enter()
     .append('text')
-    .text(d => d)
-    .attr('x', d => {
-      // r is radius
-      let r = radius
-      let a = angleScale(d) + angleScale.bandwidth() / 2
-
-      return Math.sin(a) * r
+    .attr('d', labelArc)
+    .attr('transform', function(d) {
+      return 'translate(' + labelArc.centroid(d) + ')'
     })
-    .attr('y', d => {
-      // r is radius
-      let r = radius
-      let a = angleScale(d) + angleScale.bandwidth() / 2
-
-      return Math.cos(a) * r * -1
+    .text(function(d) {
+      return d.data.task
+    })
+    .attr('text-anchor', function(d) {
+      if (d.startAngle > Math.PI) {
+        return 'end'
+      } else {
+        return 'start'
+      }
     })
 }
